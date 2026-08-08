@@ -6,6 +6,6 @@ Copyright=(c) 2026, Izflir
 License=MIT
 Version=0.1
 MainScript=Main.qml
-ConfigFile=default.conf
+ConfigFile=theme.conf
 TranslationsDirectory=translations
 Font=Terminus

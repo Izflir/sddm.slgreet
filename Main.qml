@@ -1,242 +1,293 @@
-import QtQuick 2.0
+import QtQuick 2.15
+import QtQuick.Window 2.15
 import SddmComponents 2.0
 
 Rectangle {
     id: root
+    width: Screen.width
+    height: Screen.height
+    color: cfg.bgColor
 
-    property string fontFamily: config.fontFamily || "Terminus"
-    property int barFontSize: config.barFontSize ? parseInt(config.barFontSize) : 14
-    property int barHeight: config.barHeight ? parseInt(config.barHeight) : 18
+    QtObject {
+        id: cfg
+        property string bgColor: config.BackgroundColor || "#0C0E0C"
+        property string panelColor: config.PanelColor || "#222222"
+        property string fieldColor: config.FieldColor || "#191919"
+        property string borderColor: config.BorderColor || "#444444"
+        property string fgColor: config.FgColor || "#cccccc"
+        property string fgBright: config.FgColorBright || "#ffffff"
+        property string accent: config.AccentColor || "#808080"
+        property string fontFamily: config.FontFamily || "Terminus"
+        property int fontSize: parseInt(config.FontSize || "11")
+        property int tagCount: parseInt(config.TagCount || "9")
+        property string bg: config.background || ""
+    }
 
-    property color colBg: config.backgroundColor || "#222222"
-    property color colBarBg: config.barBackgroundColor || "#222222"
-    property color colBarFg: config.barTextColor || "#bbbbbb"
-    property color colBorder: config.normalBorderColor || "#444444"
-    property color colSel: config.selectedBorderColor || "#005577"
-    property color colSelFg: config.selectedTextColor || "#eeeeee"
-    property color colInputBg: config.inputBackgroundColor || "#111111"
-    property color colInputFg: config.inputTextColor || "#bbbbbb"
-    property color colPlaceholder: config.placeholderColor || "#888887"
-
-    color: colBg
+    FontLoader { id: monoFont; source: "" }
 
     Image {
         id: wallpaper
         anchors.fill: parent
-        source: config.wallpaperPath || ""
-        visible: source !== ""
-        fillMode: {
-            var m = config.wallpaperFillMode || "crop"
-            if (m === "fit") return Image.PreserveAspectFit
-            if (m === "stretch") return Image.Stretch
-            if (m === "tile") return Image.Tile
-            return Image.PreserveAspectCrop
-        }
-        z: -2
+        visible: cfg.bg !== ""
+        source: cfg.bg
+        fillMode: Image.PreserveAspectCrop
     }
 
     Rectangle {
-        id: wallpaperOverlay
         anchors.fill: parent
         color: "#000000"
-        opacity: wallpaper.visible ? (config.wallpaperOverlayOpacity ? parseFloat(config.wallpaperOverlayOpacity) : 0.35) : 0
-        z: -1
+        opacity: wallpaper.visible ? 0.35 : 0
     }
 
-    TextConstants { id: textConstants }
+    property int barHeight: 20
 
     Rectangle {
-        id: bar
+        id: topBar
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
         height: barHeight
-        color: colBarBg
+        color: cfg.panelColor
 
         Rectangle {
             anchors.bottom: parent.bottom
             width: parent.width
-            height: 2
-            color: colBg
+            height: 1
+            color: cfg.borderColor
         }
 
         Text {
-            id: clock
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            font.family: fontFamily
-            font.pixelSize: barFontSize
-            color: colBarFg
-            text: Qt.formatDateTime(new Date(), "dd-MM-yyyy HH:mm")
-
-            Timer {
-                interval: 1000
-                running: true
-                repeat: true
-                onTriggered: clock.text = Qt.formatDateTime(new Date(), "dd-MM-yyyy HH:mm")
-            }
-        }
-
-        Rectangle {
-            id: sessionTag
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: sessionText.paintedWidth + 12
-            color: colSel
-
-            Text {
-                id: sessionText
-                anchors.centerIn: parent
-                font.family: fontFamily
-                font.pixelSize: barFontSize
-                color: colSelFg
-                text: (sessionModel.data(sessionModel.index(session.index, 0), Qt.DisplayRole) || config.sessionTagText || "dwm") || "dwm"
-            }
-
-            MouseArea {
-                id: sessionArea
-                anchors.fill: parent
-                onClicked: sessionMenu.open()
-            }
-
-            ListView {
-                id: sessionMenu
-                visible: false
-                anchors.top: parent.bottom
-                anchors.right: parent.right
-                width: 140
-                height: Math.min(sessionModel.count * 20, 120)
-                model: sessionModel
-                property bool open: false
-                function open() { sessionMenu.visible = !sessionMenu.visible }
-
-                delegate: Rectangle {
-                    width: sessionMenu.width
-                    height: 20
-                    color: index === session.index ? colSel : colBarBg
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 6
-                        anchors.verticalCenter: parent.verticalCenter
-                        font.family: fontFamily
-                        font.pixelSize: barFontSize
-                        color: index === session.index ? colSelFg : colBarFg
-                        text: model.name
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            session.index = index
-                            sessionMenu.visible = false
-                        }
-                    }
-                }
-            }
+            id: statusText
+            anchors.centerIn: parent
+            font.family: cfg.fontFamily
+            font.pixelSize: cfg.fontSize + 2
+            color: cfg.fgColor
+            text: Qt.formatDateTime(clock.currentDateTime, "yyyy-dd-MM HH:mm")
         }
     }
 
-    Item {
-        id: session
-        property int index: sessionModel.lastIndex >= 0 ? sessionModel.lastIndex : 0
+    Timer {
+        id: clockTimer
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: clock.currentDateTime = new Date()
+    }
+    QtObject {
+        id: clock
+        property date currentDateTime: new Date()
     }
 
     Rectangle {
         id: loginBox
         anchors.centerIn: parent
-        width: (config.fieldWidth ? parseInt(config.fieldWidth) : 220) + 48
-        height: 150
-        color: colBg
+        width: 300
+        height: contentCol.height + 48
+        color: cfg.panelColor
         border.width: 1
-        border.color: passwordField.activeFocus ? colSel : colBorder
+        border.color: cfg.borderColor
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 2
+            color: cfg.accent
+        }
+
+        ComboBox {
+            id: sessionCombo
+            visible: false
+            model: sddm.sessionModel || [{ name: "default" }]
+            index: sddm.sessionModel ? sddm.sessionModel.lastIndex : 0
+        }
 
         Column {
-            anchors.fill: parent
-            anchors.margins: 24
+            id: contentCol
+            anchors.centerIn: parent
             spacing: 16
+            width: parent.width - 48
 
             Text {
-                id: usernameLabel
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                font.family: fontFamily
-                font.pixelSize: 14
-                color: colInputFg
-                text: (userModel.lastUser || (userModel.count > 0 ? userModel.data(userModel.index(0, 0), Qt.DisplayRole) : "")) || ""
+                text: userModel.lastUser || (userModel.count > 0 ? userModel.data(userModel.index(0, 0), Qt.DisplayRole) : "") || "USER"
+                font.family: cfg.fontFamily
+                font.pixelSize: cfg.fontSize + 4
+                font.bold: true
+                color: cfg.fgBright
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            TextInput {
+                id: userInput
+                visible: false
+                text: userModel.lastUser || (userModel.count > 0 ? userModel.data(userModel.index(0, 0), Qt.DisplayRole) : "") || ""
             }
 
             Rectangle {
-                width: parent.width
-                height: 1
-                color: colBorder
+                id: passField
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 168
+                height: cfg.fontSize + 18
+                color: cfg.fieldColor
+                border.width: 1
+                border.color: passInput.activeFocus ? cfg.accent : cfg.borderColor
+                clip: true
+                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                TextInput {
+                    id: passInput
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    horizontalAlignment: TextInput.AlignHCenter
+                    verticalAlignment: TextInput.AlignVCenter
+                    font.family: cfg.fontFamily
+                    font.pixelSize: cfg.fontSize
+                    color: cfg.fgBright
+                    echoMode: TextInput.Password
+                    passwordCharacter: "*"
+                    selectByMouse: true
+                    focus: true
+                    cursorVisible: true
+                    cursorDelegate: Rectangle {
+                        width: cfg.fontSize * 0.6
+                        height: cfg.fontSize + 2
+                        color: cfg.accent
+                    }
+                    Keys.onReturnPressed: sddm.login(userInput.text, passInput.text, sessionCombo.currentIndex)
+                    Keys.onEnterPressed: sddm.login(userInput.text, passInput.text, sessionCombo.currentIndex)
+                }
             }
 
-            Column {
-                width: parent.width
-                spacing: 4
+            Text {
+                id: errorText
+                text: ""
+                color: "#cc5555"
+                font.family: cfg.fontFamily
+                font.pixelSize: cfg.fontSize - 2
+                height: cfg.fontSize - 2
+                opacity: text !== "" ? 1 : 0
+                anchors.horizontalCenter: parent.horizontalCenter
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+            }
+        }
+
+        Connections {
+            target: sddm
+            function onLoginFailed() { errorText.text = "Incorrect Password, Try Again" }
+            function onLoginSucceeded() { errorText.text = "" }
+        }
+    }
+
+    Rectangle {
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: barHeight
+        color: cfg.panelColor
+
+        Rectangle {
+            anchors.top: parent.top
+            width: parent.width
+            height: 1
+            color: cfg.borderColor
+        }
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 24
+
+            Row {
+                spacing: 6
                 Rectangle {
-                    width: parent.width
-                    height: 26
-                    color: colInputBg
-                    border.width: 1
-                    border.color: passwordField.activeFocus ? colSel : colBorder
-
-                    TextInput {
-                        id: passwordField
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        font.family: fontFamily
-                        font.pixelSize: config.passwordFontSize ? parseInt(config.passwordFontSize) : 14
-                        color: colInputFg
-                        echoMode: TextInput.Password
-                        passwordCharacter: config.passwordCharacter || "*"
-                        horizontalAlignment: TextInput.AlignHCenter
-                        focus: true
-                        selectByMouse: true
-
-                        Keys.onReturnPressed: doLogin()
-                        Keys.onEnterPressed: doLogin()
-
-                        cursorDelegate: Rectangle {
-                            width: 8
-                            height: passwordField.font.pixelSize
-                            color: "#8c8c8c"
-                            visible: passwordField.activeFocus && passwordField.text.length > 0
-                        }
+                    color: cfg.accent
+                    width: key10.paintedWidth + 8
+                    height: key10.paintedHeight + 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        id: key10
+                        anchors.centerIn: parent
+                        text: "F10"
+                        font.family: cfg.fontFamily
+                        font.pixelSize: cfg.fontSize + 2
+                        font.bold: true
+                        color: cfg.bgColor
                     }
+                }
+                Text {
+                    text: "SUSPEND"
+                    font.family: cfg.fontFamily
+                    font.pixelSize: cfg.fontSize + 2
+                    color: cfg.fgColor
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Row {
+                spacing: 6
+                Rectangle {
+                    color: cfg.accent
+                    width: key11.paintedWidth + 8
+                    height: key11.paintedHeight + 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        id: key11
+                        anchors.centerIn: parent
+                        text: "F11"
+                        font.family: cfg.fontFamily
+                        font.pixelSize: cfg.fontSize + 2
+                        font.bold: true
+                        color: cfg.bgColor
+                    }
+                }
+                Text {
+                    text: "REBOOT"
+                    font.family: cfg.fontFamily
+                    font.pixelSize: cfg.fontSize + 2
+                    color: cfg.fgColor
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Row {
+                spacing: 6
+                Rectangle {
+                    color: cfg.accent
+                    width: key12.paintedWidth + 8
+                    height: key12.paintedHeight + 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        id: key12
+                        anchors.centerIn: parent
+                        text: "F12"
+                        font.family: cfg.fontFamily
+                        font.pixelSize: cfg.fontSize + 2
+                        font.bold: true
+                        color: cfg.bgColor
+                    }
+                }
+                Text {
+                    text: "SHUTDOWN"
+                    font.family: cfg.fontFamily
+                    font.pixelSize: cfg.fontSize + 2
+                    color: cfg.fgColor
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
         }
     }
 
-    Rectangle {
-        id: flashBorder
-        anchors.fill: parent
-        color: "transparent"
-        border.width: 4
-        border.color: "#e24b4a"
-        opacity: 0
-        Behavior on opacity { NumberAnimation { duration: 150 } }
-    }
-
-    function doLogin() {
-        sddm.login(usernameLabel.text, passwordField.text, session.index)
-    }
-
-    Connections {
-        target: sddm
-        function onLoginFailed() {
-            flashBorder.opacity = 1
-            passwordField.text = ""
-            resetFlash.start()
+    Keys.onPressed: {
+        if (event.key === Qt.Key_F12 && sddm.canPowerOff) {
+            sddm.powerOff()
+            event.accepted = true
+        } else if (event.key === Qt.Key_F11 && sddm.canReboot) {
+            sddm.reboot()
+            event.accepted = true
+        } else if (event.key === Qt.Key_F10 && sddm.canSuspend) {
+            sddm.suspend()
+            event.accepted = true
         }
     }
 
-    Timer {
-        id: resetFlash
-        interval: 400
-        onTriggered: flashBorder.opacity = 0
-    }
-
-    Component.onCompleted: passwordField.forceActiveFocus()
+    Component.onCompleted: passInput.forceActiveFocus()
 }
