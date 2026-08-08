@@ -9,3 +9,7 @@ dependencies needed:
 
 to install:
 ``` cp */your/theme/directory* /usr/share/sddm/themes/ ```
+
+this theme is customizable, you can customize the colors and change the background wallpaper inside the ```theme.conf```
+
+<small>© 2026 Izflir. All rights reserved.</small>
